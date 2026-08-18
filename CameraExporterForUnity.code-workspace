@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../VrmRigifyForUnity"
+		},
+		{
+			"path": "../VrmRigifyAnimationExporterForUnity"
+		}
+	],
+	"settings": {}
+}
