@@ -5,6 +5,7 @@
 
 import bpy
 from bpy.props import (
+    BoolProperty,
     CollectionProperty,
     IntProperty,
     PointerProperty,
@@ -20,9 +21,15 @@ LOG = "[CEU:props]"
 
 
 class CEU_ActionItem(PropertyGroup):
-    """ベイク対象 Action の 1 行（参照専用、UI-00500）。"""
+    """エクスポート対象 Action の 1 行（UI-00250）。"""
 
     name: StringProperty(name="Action Name")
+
+    selected: BoolProperty(
+        name="Export",
+        description="この Action をエクスポート対象に含める",
+        default=False,
+    )
 
     frame_start: IntProperty(name="Start")
     frame_end: IntProperty(name="End")
@@ -38,8 +45,13 @@ def get_action_assign_target(camera_object):
 
 
 def refresh_action_list(scene):
-    """Action リストを再構築する（参照専用、UI-00500）。"""
+    """Action リストを再構築する（UI-00250）。
+
+    選択状態は再構築後も可能な限り維持する。
+    """
     settings = scene.ceu_settings
+
+    previous_selection = {item.name for item in settings.action_items if item.selected}
 
     settings.action_items.clear()
 
@@ -50,6 +62,7 @@ def refresh_action_list(scene):
     for action in action_utils.collect_bakeable_actions(target):
         item = settings.action_items.add()
         item.name = action.name
+        item.selected = action.name in previous_selection
 
         start, end = action_utils.get_action_frame_range(action)
         item.frame_start = start
