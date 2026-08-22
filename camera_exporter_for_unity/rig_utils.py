@@ -1,18 +1,12 @@
 #################################################
 # 駆動元リグの解析・指定
-# 設計: TSK-00001 RIG-00100 〜 RIG-00300
+# 設計: TSK-00001 RIG-00100 〜 RIG-00200
 #################################################
 
 import bpy
 
 
 LOG = "[CEU:rig]"
-
-# Dolly リグ規約上、画角カスタムプロパティを持つポーズボーンの固定名（RIG-00300）
-LENS_BONE_NAME = "Camera"
-
-# 画角ドライバーが参照するカスタムプロパティ名
-LENS_PROPERTY_KEY = "lens"
 
 
 def is_export_camera(self, obj):
@@ -32,34 +26,3 @@ def find_driving_armature(camera_object):
 
     return parent
 
-
-def find_lens_bone(armature_object):
-    """駆動元リグから画角カスタムプロパティを持つボーンを探す（RIG-00300）。
-
-    Dolly リグ規約に従い固定名 'Camera' のポーズボーンを探す。
-    存在しない場合や lens カスタムプロパティを持たない場合は None を返す。
-    """
-    if armature_object is None:
-        return None
-
-    pose_bone = armature_object.pose.bones.get(LENS_BONE_NAME)
-    if pose_bone is None:
-        return None
-
-    if LENS_PROPERTY_KEY not in pose_bone:
-        return None
-
-    return pose_bone
-
-
-def has_lens_driver(camera_object):
-    """カメラデータの lens がドライバーで駆動されているかを判定する。"""
-    data = camera_object.data
-    if data.animation_data is None:
-        return False
-
-    for fcurve in data.animation_data.drivers:
-        if fcurve.data_path == "lens":
-            return True
-
-    return False

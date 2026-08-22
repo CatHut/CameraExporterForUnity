@@ -1,6 +1,6 @@
 #################################################
 # FBX 出力
-# 設計: TSK-00001 FBX-00100 〜 FBX-00250
+# 設計: TSK-00001 FBX-00100 〜 FBX-00270 / TSK-00005 FBX-00600
 #################################################
 
 import os
@@ -25,9 +25,9 @@ def sanitize_filename(name):
 def export_fbx(filepath, camera_object, frame_start, frame_end):
     """FBX を出力する（FBX-00100）。
 
-    画角（Focal Length, mm）は出力用カメラの scale.x に埋め込まれている
-    （FBX-00250）。Blender の FBX エクスポータは Transform チャンネルの
-    F カーブのみを書き出すため、この方式でアニメーションが渡る。
+    画角（Focal Length, mm）は camera_object.data が保持する driver 経由で
+    Blender の FBX エクスポータが Camera.FocalLength チャンネルとして直接
+    出力する（BAKE-00500 / FBX-00600）。scale への値埋め込みは行わない。
 
     bake_anim_use_all_actions=False の場合、Blender の FBX エクスポータは
     シーンのフレーム範囲を基準にベイクし直す。対象 Action の frame_range と
