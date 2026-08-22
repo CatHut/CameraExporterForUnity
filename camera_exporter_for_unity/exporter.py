@@ -27,20 +27,6 @@ class ExportContext:
     def add_action(self, action):
         self.actions.append(action)
 
-    def remove_action(self, action):
-        """追跡中の Action を即座に破棄する。
-
-        次のファイルへ前回分の AnimStack が混入するのを防ぐために使う。
-        """
-        if action in self.actions:
-            self.actions.remove(action)
-
-        try:
-            action.use_fake_user = False
-            bpy.data.actions.remove(action)
-        except (ReferenceError, RuntimeError) as e:
-            print(f"{LOG} Action 削除に失敗: {e}")
-
     def cleanup(self):
         """一時データを全て破棄する。"""
         for obj in self.objects:
@@ -75,22 +61,6 @@ class ExportContext:
 
         self.objects.clear()
         self.actions.clear()
-
-
-def get_selected_actions(scene):
-    """UI で選択された Action を取得する（UI-00250）。"""
-    settings = scene.ceu_settings
-    actions = []
-
-    for item in settings.action_items:
-        if not item.selected:
-            continue
-
-        action = bpy.data.actions.get(item.name)
-        if action is not None:
-            actions.append(action)
-
-    return actions
 
 
 def store_selection_state(context):
@@ -159,13 +129,13 @@ def run_export(context, report):
         report({'ERROR'}, "カメラが選択されていません")
         return False, []
 
-    actions = get_selected_actions(scene)
-    if not actions:
-        report({'ERROR'}, "エクスポート対象の Action が選択されていません")
-        return False, []
-
     driving_armature = rig_utils.find_driving_armature(source_camera)
     assign_target = driving_armature if driving_armature is not None else source_camera
+
+    actions = action_utils.collect_bakeable_actions(assign_target)
+    if not actions:
+        report({'ERROR'}, "ベイク可能な Action がありません")
+        return False, []
 
     export_ctx = ExportContext()
 
@@ -182,8 +152,6 @@ def run_export(context, report):
 
         bake_utils.add_copy_transforms(export_camera, source_camera)
 
-        exported = []
-
         for action in actions:
             baked = bake_utils.bake_action(
                 context, export_camera, source_camera, driving_armature, action)
@@ -193,17 +161,13 @@ def run_export(context, report):
 
             export_ctx.add_action(baked)
 
-            frame_start, frame_end = action_utils.get_action_frame_range(action)
-            filepath = fbx_export.build_animation_filepath(
-                settings.export_directory, action.name)
-            fbx_export.export_fbx(filepath, export_camera, frame_start, frame_end)
-            exported.append(filepath)
-
-            export_ctx.remove_action(baked)
-
         bake_utils.remove_copy_transforms(export_camera)
 
-        return True, exported
+        filepath = fbx_export.build_export_filepath(
+            settings.export_directory, source_camera.name)
+        fbx_export.export_fbx(filepath, export_camera)
+
+        return True, [filepath]
 
     finally:
         export_ctx.cleanup()

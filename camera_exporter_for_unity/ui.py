@@ -6,8 +6,10 @@
 import bpy
 from bpy.types import Operator, Panel, UIList
 
+from . import action_utils
 from . import exporter
 from . import properties
+from . import rig_utils
 
 
 LOG = "[CEU:ui]"
@@ -28,23 +30,8 @@ class CEU_OT_RefreshActions(Operator):
         return {'FINISHED'}
 
 
-class CEU_OT_SelectAllActions(Operator):
-    """Action の選択状態を一括で切り替える"""
-    bl_idname = "ceu.select_all_actions"
-    bl_label = "Select All Actions"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    select: bpy.props.BoolProperty(default=True)
-
-    def execute(self, context):
-        for item in context.scene.ceu_settings.action_items:
-            item.selected = self.select
-
-        return {'FINISHED'}
-
-
 class CEU_OT_Export(Operator):
-    """選択した Action を Unity 向け FBX として出力する"""
+    """対象カメラの全 Action を Unity 向け FBX として出力する"""
     bl_idname = "ceu.export"
     bl_label = "Export FBX"
     bl_options = {'REGISTER'}
@@ -56,7 +43,10 @@ class CEU_OT_Export(Operator):
         if settings.source_camera is None:
             return False
 
-        return any(item.selected for item in settings.action_items)
+        driving_armature = rig_utils.find_driving_armature(settings.source_camera)
+        assign_target = driving_armature if driving_armature is not None else settings.source_camera
+
+        return len(action_utils.collect_bakeable_actions(assign_target)) > 0
 
     def execute(self, context):
         try:
@@ -83,13 +73,12 @@ class CEU_OT_Export(Operator):
 #################################################
 
 class CEU_UL_ActionList(UIList):
-    """エクスポート対象 Action の一覧（UI-00250）"""
+    """ベイク対象 Action の一覧（参照専用、UI-00500）"""
 
     def draw_item(self, context, layout, data, item, icon,
                   active_data, active_propname, index):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             row = layout.row(align=True)
-            row.prop(item, "selected", text="")
             row.label(text=item.name, icon='CAMERA_DATA')
 
             sub = row.row()
@@ -98,7 +87,7 @@ class CEU_UL_ActionList(UIList):
 
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
-            layout.prop(item, "selected", text="")
+            layout.label(text=item.name)
 
 
 #################################################
@@ -127,7 +116,7 @@ class CEU_PT_ExportPanel(Panel):
             box.label(text="カメラを選択してください", icon='ERROR')
             return
 
-        # Action の選択（UI-00250）
+        # ベイク対象 Action の一覧表示（参照専用、UI-00500）
         box = layout.box()
         header = box.row(align=True)
         header.label(text="Actions:")
@@ -142,13 +131,8 @@ class CEU_PT_ExportPanel(Panel):
 
         if len(settings.action_items) == 0:
             box.label(text="ベイク可能な Action がありません", icon='INFO')
-
-        row = box.row(align=True)
-        row.operator("ceu.select_all_actions", text="All").select = True
-        row.operator("ceu.select_all_actions", text="None").select = False
-
-        selected_count = sum(1 for item in settings.action_items if item.selected)
-        box.label(text=f"選択中: {selected_count} 件")
+        else:
+            box.label(text=f"{len(settings.action_items)} 件を出力します")
 
         # 出力設定
         box = layout.box()
@@ -162,7 +146,6 @@ class CEU_PT_ExportPanel(Panel):
 
 classes = (
     CEU_OT_RefreshActions,
-    CEU_OT_SelectAllActions,
     CEU_OT_Export,
     CEU_UL_ActionList,
     CEU_PT_ExportPanel,
