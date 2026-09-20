@@ -79,6 +79,14 @@ def _export_fbx_with_current_frame_range(filepath, camera_object):
         add_leaf_bones=False,
         path_mode='COPY',
         embed_textures=False,
+        # 未指定だとオペレータの実デフォルト（axis_forward='-Z',
+        # axis_up='Y', apply_scale_options='FBX_SCALE_NONE'）が使われ、
+        # Unity インポート後に前後方向が反転する
+        # （姉妹プロジェクト VrmRigifyAnimationExporterForUnity の
+        # TSK-00002 FIX-00100 と同一の原因・対処）
+        axis_forward='-Y',
+        axis_up='Z',
+        apply_scale_options='FBX_SCALE_ALL',
     )
 
 
